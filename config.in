@@ -32,7 +32,36 @@ shadows_on_csd enable
 # default_dim_inactive <float value 0.0 - 1.0>
 # for_window [CRITERIA_HERE] dim_inactive <float value 0.0 - 1.0>
 # dim_inactive_colors.unfocused <hex color>
-# dim_inactive_colors.urgent <hex color> 
+# dim_inactive_colors.urgent <hex color>
+
+# Titlebar Buttons (macOS-style traffic lights)
+# Enable/disable titlebar buttons
+# titlebar_buttons enable|disable
+#
+# Button size in pixels (4-50)
+# titlebar_buttons size 12
+#
+# Padding between buttons and from edge (0-50)
+# titlebar_buttons padding 6
+#
+# Position: left or right
+# titlebar_buttons position left
+#
+# Button colors (close|minimize|maximize) (normal|hover|pressed) <hex color>
+# titlebar_buttons colors close normal #FF5E57FF
+# titlebar_buttons colors close hover #FF7A74FF
+# titlebar_buttons colors close pressed #FF4A44FF
+# titlebar_buttons colors minimize normal #FFBD2EFF
+# titlebar_buttons colors minimize hover #FFD55CFF
+# titlebar_buttons colors minimize pressed #FFA522FF
+# titlebar_buttons colors maximize normal #29C740FF
+# titlebar_buttons colors maximize hover #4AD95CFF
+# titlebar_buttons colors maximize pressed #1FA833FF
+#
+# Custom SVG icons (path to SVG file, or "none" to use colored circles)
+# titlebar_buttons icons close /path/to/close.svg
+# titlebar_buttons icons minimize /path/to/minimize.svg
+# titlebar_buttons icons maximize /path/to/maximize.svg
 
 # Default config for Sway
 #

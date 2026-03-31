@@ -80,6 +80,21 @@ struct sway_container {
 
 		struct sway_text_node *title_text;
 		struct sway_text_node *marks_text;
+
+		struct wlr_scene_rect *btn_close;
+		struct wlr_scene_rect *btn_minimize;
+		struct wlr_scene_rect *btn_maximize;
+		// Button state tracking
+		bool btn_close_hover;
+		bool btn_minimize_hover;
+		bool btn_maximize_hover;
+		bool btn_close_pressed;
+		bool btn_minimize_pressed;
+		bool btn_maximize_pressed;
+		// SVG icon buffers (NULL = use colored circles)
+		struct wlr_scene_buffer *btn_close_svg;
+		struct wlr_scene_buffer *btn_minimize_svg;
+		struct wlr_scene_buffer *btn_maximize_svg;
 	} title_bar;
 
 	struct {

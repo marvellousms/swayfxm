@@ -507,6 +507,28 @@ struct sway_config {
 	bool titlebar_separator;
 	bool scratchpad_minimize;
 
+	// Titlebar buttons
+	struct {
+		bool enabled;
+		int size; // In Pixels
+		int padding;
+		enum { BUTTONS_LEFT, BUTTONS_RIGHT } position;
+		// Colors for each button (normal, hover, pressed)
+		float close_color[4];
+		float close_hover[4];
+		float close_pressed[4];
+		float minimize_color[4];
+		float minimize_hover[4];
+		float minimize_pressed[4];
+		float maximize_color[4];
+		float maximize_hover[4];
+		float maximize_pressed[4];
+		// SVG icon paths (NULL = use colored circles)
+		char *close_svg;
+		char *minimize_svg;
+		char *maximize_svg;
+	} titlebar_buttons;
+
 	list_t *layer_criteria;
 
 	char *swaynag_command;

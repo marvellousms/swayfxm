@@ -120,6 +120,21 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->title_bar.border = alloc_rect_node(c->title_bar.tree, &failed);
 	c->title_bar.background = alloc_rect_node(c->title_bar.tree, &failed);
 
+	c->title_bar.btn_close    = alloc_rect_node(c->title_bar.tree, &failed);
+	c->title_bar.btn_minimize = alloc_rect_node(c->title_bar.tree, &failed);
+	c->title_bar.btn_maximize = alloc_rect_node(c->title_bar.tree, &failed);
+
+	// SVG icon buffers (hidden by default, shown when SVG path is set)
+	c->title_bar.btn_close_svg    = wlr_scene_buffer_create(c->title_bar.tree, NULL);
+	c->title_bar.btn_minimize_svg = wlr_scene_buffer_create(c->title_bar.tree, NULL);
+	c->title_bar.btn_maximize_svg = wlr_scene_buffer_create(c->title_bar.tree, NULL);
+	if (c->title_bar.btn_close_svg)
+		wlr_scene_node_set_enabled(&c->title_bar.btn_close_svg->node, false);
+	if (c->title_bar.btn_minimize_svg)
+		wlr_scene_node_set_enabled(&c->title_bar.btn_minimize_svg->node, false);
+	if (c->title_bar.btn_maximize_svg)
+		wlr_scene_node_set_enabled(&c->title_bar.btn_maximize_svg->node, false);
+
 	if (view) {
 		// only containers with views can have borders
 		c->border.top = alloc_rect_node(c->border.tree, &failed);
@@ -477,6 +492,93 @@ void container_arrange_title_bar(struct sway_container *con) {
 			  .height = con->title_bar.background->height,
 			},
 	});
+
+	// Titlebar buttons (macOS-style traffic lights)
+	if (config->titlebar_buttons.enabled) {
+		int btn_size = config->titlebar_buttons.size;
+		int btn_padding = config->titlebar_buttons.padding;
+		int btn_y = (height - btn_size) / 2;
+		int btn_x_start;
+		
+		// Determine starting X position based on left/right setting
+		if (config->titlebar_buttons.position == BUTTONS_RIGHT) {
+			btn_x_start = width - thickness - btn_padding - btn_size * 3 - btn_padding * 2;
+		} else {
+			btn_x_start = thickness + btn_padding;
+		}
+
+		// Select colors based on button state (pressed > hover > normal)
+		float *col_close, *col_minimize, *col_maximize;
+		
+		if (con->title_bar.btn_close_pressed) {
+			col_close = config->titlebar_buttons.close_pressed;
+		} else if (con->title_bar.btn_close_hover) {
+			col_close = config->titlebar_buttons.close_hover;
+		} else {
+			col_close = config->titlebar_buttons.close_color;
+		}
+		
+		if (con->title_bar.btn_minimize_pressed) {
+			col_minimize = config->titlebar_buttons.minimize_pressed;
+		} else if (con->title_bar.btn_minimize_hover) {
+			col_minimize = config->titlebar_buttons.minimize_hover;
+		} else {
+			col_minimize = config->titlebar_buttons.minimize_color;
+		}
+		
+		if (con->title_bar.btn_maximize_pressed) {
+			col_maximize = config->titlebar_buttons.maximize_pressed;
+		} else if (con->title_bar.btn_maximize_hover) {
+			col_maximize = config->titlebar_buttons.maximize_hover;
+		} else {
+			col_maximize = config->titlebar_buttons.maximize_color;
+		}
+
+		// Check if SVG icons should be used
+		bool use_svgs = config->titlebar_buttons.close_svg || 
+		                config->titlebar_buttons.minimize_svg || 
+		                config->titlebar_buttons.maximize_svg;
+
+		// Close button
+		int btn_x = btn_x_start;
+		wlr_scene_node_set_position(&con->title_bar.btn_close->node, btn_x, btn_y);
+		wlr_scene_rect_set_size(con->title_bar.btn_close, btn_size, btn_size);
+		wlr_scene_rect_set_corner_radius(con->title_bar.btn_close, btn_size / 2);
+		wlr_scene_rect_set_color(con->title_bar.btn_close, col_close);
+		
+		if (use_svgs && config->titlebar_buttons.close_svg) {
+			// TODO: Load and position SVG icon
+			wlr_scene_node_set_enabled(&con->title_bar.btn_close_svg->node, true);
+		} else {
+			wlr_scene_node_set_enabled(&con->title_bar.btn_close_svg->node, false);
+		}
+
+		// Minimize button
+		btn_x += btn_size + btn_padding;
+		wlr_scene_node_set_position(&con->title_bar.btn_minimize->node, btn_x, btn_y);
+		wlr_scene_rect_set_size(con->title_bar.btn_minimize, btn_size, btn_size);
+		wlr_scene_rect_set_corner_radius(con->title_bar.btn_minimize, btn_size / 2);
+		wlr_scene_rect_set_color(con->title_bar.btn_minimize, col_minimize);
+		
+		if (use_svgs && config->titlebar_buttons.minimize_svg) {
+			wlr_scene_node_set_enabled(&con->title_bar.btn_minimize_svg->node, true);
+		} else {
+			wlr_scene_node_set_enabled(&con->title_bar.btn_minimize_svg->node, false);
+		}
+
+		// Maximize button
+		btn_x += btn_size + btn_padding;
+		wlr_scene_node_set_position(&con->title_bar.btn_maximize->node, btn_x, btn_y);
+		wlr_scene_rect_set_size(con->title_bar.btn_maximize, btn_size, btn_size);
+		wlr_scene_rect_set_corner_radius(con->title_bar.btn_maximize, btn_size / 2);
+		wlr_scene_rect_set_color(con->title_bar.btn_maximize, col_maximize);
+		
+		if (use_svgs && config->titlebar_buttons.maximize_svg) {
+			wlr_scene_node_set_enabled(&con->title_bar.btn_maximize_svg->node, true);
+		} else {
+			wlr_scene_node_set_enabled(&con->title_bar.btn_maximize_svg->node, false);
+		}
+	}
 
 	container_update(con);
 }

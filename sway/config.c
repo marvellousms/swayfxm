@@ -375,6 +375,28 @@ static void config_defaults(struct sway_config *config) {
 	config->titlebar_separator = true;
 	config->scratchpad_minimize = false;
 
+	// Titlebar buttons defaults
+	config->titlebar_buttons.enabled = false;
+	config->titlebar_buttons.size = 12;
+	config->titlebar_buttons.padding = 6;
+	config->titlebar_buttons.position = BUTTONS_LEFT;
+	// Close button (red)
+	color_to_rgba(config->titlebar_buttons.close_color, 0xFF5E57FF);
+	color_to_rgba(config->titlebar_buttons.close_hover, 0xFF7A74FF);
+	color_to_rgba(config->titlebar_buttons.close_pressed, 0xFF4A44FF);
+	// Minimize button (yellow)
+	color_to_rgba(config->titlebar_buttons.minimize_color, 0xFFBD2EFF);
+	color_to_rgba(config->titlebar_buttons.minimize_hover, 0xFFD55CFF);
+	color_to_rgba(config->titlebar_buttons.minimize_pressed, 0xFFA522FF);
+	// Maximize button (green)
+	color_to_rgba(config->titlebar_buttons.maximize_color, 0x29C740FF);
+	color_to_rgba(config->titlebar_buttons.maximize_hover, 0x4AD95CFF);
+	color_to_rgba(config->titlebar_buttons.maximize_pressed, 0x1FA833FF);
+	// SVG paths (NULL = use colored circles)
+	config->titlebar_buttons.close_svg = NULL;
+	config->titlebar_buttons.minimize_svg = NULL;
+	config->titlebar_buttons.maximize_svg = NULL;
+
 	if (!(config->layer_criteria = create_list())) {
 		goto cleanup;
 	}

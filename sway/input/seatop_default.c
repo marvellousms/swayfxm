@@ -13,12 +13,17 @@
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/scene_descriptor.h"
+#include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "log.h"
 #if WLR_HAS_XWAYLAND
 #include "sway/xwayland.h"
 #endif
+
+// Forward declaration
+static void update_titlebar_button_hover(struct sway_container *cont,
+		double cursor_x, double cursor_y, bool buttons_enabled);
 
 struct seatop_default_event {
 	struct sway_node *previous_node;
@@ -434,6 +439,78 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 		return;
 	}
 
+	// Handle titlebar button clicks (close/minimize/maximize)
+	if (cont && on_titlebar && config->titlebar_buttons.enabled &&
+			button == BTN_LEFT) {
+		int height = container_titlebar_height();
+		int thickness = config->titlebar_border_thickness;
+		int btn_size = config->titlebar_buttons.size;
+		int btn_padding = config->titlebar_buttons.padding;
+		int btn_y = (height - btn_size) / 2;
+		int btn_x_start;
+		
+		// Determine starting X position based on left/right setting
+		if (config->titlebar_buttons.position == BUTTONS_RIGHT) {
+			btn_x_start = cont->title_width - thickness - btn_padding - btn_size * 3 - btn_padding * 2;
+		} else {
+			btn_x_start = thickness + btn_padding;
+		}
+
+		double cx = cursor->cursor->x - cont->current.x;
+		double cy = cursor->cursor->y - cont->current.y;
+
+		// Only handle button press (not release) for actions
+		if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+			// Close button
+			int btn_x = btn_x_start;
+			if (cx >= btn_x && cx < btn_x + btn_size &&
+					cy >= btn_y && cy < btn_y + btn_size) {
+				cont->title_bar.btn_close_pressed = true;
+				seat_set_focus_container(seat, cont);
+				if (cont->view) {
+					view_close(cont->view);
+				}
+				transaction_commit_dirty();
+				return;
+			}
+			
+			// Minimize button
+			btn_x += btn_size + btn_padding;
+			if (cx >= btn_x && cx < btn_x + btn_size &&
+					cy >= btn_y && cy < btn_y + btn_size) {
+				cont->title_bar.btn_minimize_pressed = true;
+				seat_set_focus_container(seat, cont);
+				root_scratchpad_add_container(cont, NULL);
+				transaction_commit_dirty();
+				return;
+			}
+			
+			// Maximize button
+			btn_x += btn_size + btn_padding;
+			if (cx >= btn_x && cx < btn_x + btn_size &&
+					cy >= btn_y && cy < btn_y + btn_size) {
+				cont->title_bar.btn_maximize_pressed = true;
+				seat_set_focus_container(seat, cont);
+				container_set_fullscreen(cont,
+						cont->current.fullscreen_mode == FULLSCREEN_NONE ?
+						FULLSCREEN_WORKSPACE : FULLSCREEN_NONE);
+				transaction_commit_dirty();
+				return;
+			}
+		} else {
+			// Button release - clear pressed states
+			bool changed = cont->title_bar.btn_close_pressed ||
+			               cont->title_bar.btn_minimize_pressed ||
+			               cont->title_bar.btn_maximize_pressed;
+			cont->title_bar.btn_close_pressed = false;
+			cont->title_bar.btn_minimize_pressed = false;
+			cont->title_bar.btn_maximize_pressed = false;
+			if (changed) {
+				container_arrange_title_bar(cont);
+			}
+		}
+	}
+
 	// Handle changing focus when clicking on a container
 	if (cont && state == WL_POINTER_BUTTON_STATE_PRESSED) {
 		// Default case: focus the container that was just clicked.
@@ -598,6 +675,65 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 	}
 }
 
+// Update titlebar button hover states
+static void update_titlebar_button_hover(struct sway_container *cont,
+		double cursor_x, double cursor_y, bool buttons_enabled) {
+	if (!cont || !buttons_enabled) {
+		return;
+	}
+
+	int height = container_titlebar_height();
+	int thickness = config->titlebar_border_thickness;
+	int btn_size = config->titlebar_buttons.size;
+	int btn_padding = config->titlebar_buttons.padding;
+	int btn_y = (height - btn_size) / 2;
+	int btn_x_start;
+
+	// Determine starting X position based on left/right setting
+	if (config->titlebar_buttons.position == BUTTONS_RIGHT) {
+		btn_x_start = cont->title_width - thickness - btn_padding - btn_size * 3 - btn_padding * 2;
+	} else {
+		btn_x_start = thickness + btn_padding;
+	}
+
+	double cx = cursor_x - cont->current.x;
+	double cy = cursor_y - cont->current.y;
+
+	// Check if cursor is in titlebar area
+	if (cy < 0 || cy >= height) {
+		// Clear all hover states
+		cont->title_bar.btn_close_hover = false;
+		cont->title_bar.btn_minimize_hover = false;
+		cont->title_bar.btn_maximize_hover = false;
+		container_arrange_title_bar(cont);
+		return;
+	}
+
+	// Close button
+	int btn_x = btn_x_start;
+	bool close_hover = (cx >= btn_x && cx < btn_x + btn_size && cy >= btn_y && cy < btn_y + btn_size);
+	if (cont->title_bar.btn_close_hover != close_hover) {
+		cont->title_bar.btn_close_hover = close_hover;
+		container_arrange_title_bar(cont);
+	}
+
+	// Minimize button
+	btn_x += btn_size + btn_padding;
+	bool minimize_hover = (cx >= btn_x && cx < btn_x + btn_size && cy >= btn_y && cy < btn_y + btn_size);
+	if (cont->title_bar.btn_minimize_hover != minimize_hover) {
+		cont->title_bar.btn_minimize_hover = minimize_hover;
+		container_arrange_title_bar(cont);
+	}
+
+	// Maximize button
+	btn_x += btn_size + btn_padding;
+	bool maximize_hover = (cx >= btn_x && cx < btn_x + btn_size && cy >= btn_y && cy < btn_y + btn_size);
+	if (cont->title_bar.btn_maximize_hover != maximize_hover) {
+		cont->title_bar.btn_maximize_hover = maximize_hover;
+		container_arrange_title_bar(cont);
+	}
+}
+
 static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	struct seatop_default_event *e = seat->seatop_data;
 	struct sway_cursor *cursor = seat->cursor;
@@ -606,6 +742,12 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	double sx, sy;
 	struct sway_node *node = node_at_coords(seat,
 			cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
+
+	// Update titlebar button hover states
+	if (node && node->type == N_CONTAINER && config->titlebar_buttons.enabled) {
+		update_titlebar_button_hover(node->sway_container, cursor->cursor->x,
+				cursor->cursor->y, config->titlebar_buttons.enabled);
+	}
 
 	if (config->focus_follows_mouse != FOLLOWS_NO) {
 		check_focus_follows_mouse(seat, e, node);
